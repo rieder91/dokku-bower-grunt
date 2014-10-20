@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
+APP="$1";  IMAGE="dokku/$APP"
+
+RUN=$(cat <<EOF
+PATH=$PATH:/app/vendor/node/bin &&
+cd /app &&
+
+sleep 1
+
+echo '-----> Running "normal" npm install'
+npm install
+npm install -g grunt grunt-cli bower
+
+echo '-----> Doing bower install'
+bower install --allow-root
+
+echo '----> Grunt-ing'
+grunt
+
+EOF
+)
+
+id=$(docker run -d $IMAGE /bin/bash -c "$RUN")
+docker attach $id
+test $(docker wait $id) -eq 0
+docker commit $id $IMAGE > /dev/null
